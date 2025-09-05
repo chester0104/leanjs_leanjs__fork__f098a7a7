@@ -49,6 +49,11 @@ export const createApp = <MyAppProps extends AppProps = AppProps>(
         .replace(/\/{2,}/g, "/");
       history.replace(initialPath);
 
+      const cleanups = [];
+      if (onRemoteNavigate) {
+        cleanups.push(history.listen((e) => onRemoteNavigate(e.location)));
+      }
+
       return {
         unmount: mountApp({
           ...rest,
@@ -59,9 +64,7 @@ export const createApp = <MyAppProps extends AppProps = AppProps>(
           unmount: () => {
             if (el) ReactDOM.unmountComponentAtNode(el);
           },
-          cleanups: onRemoteNavigate
-            ? [history.listen((e) => onRemoteNavigate(e.location))]
-            : [],
+          cleanups,
           render: ({ appProps, rendered }) => {
             ReactDOM.render(
               <React.StrictMode>
