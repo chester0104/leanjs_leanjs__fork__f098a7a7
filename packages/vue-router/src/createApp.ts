@@ -82,6 +82,31 @@ export const createApp = (
         ...routerConfig,
       });
 
+      const cleanups = [];
+      if (onRemoteNavigate) {
+        cleanups.push(
+          router.beforeEach((to, from) => {
+            if (from !== START_LOCATION) {
+              // check if the next path (to.path) is inside the mfe (in its routes)
+              const isToAppRoute = routes.find(
+                ({ path }) =>
+                  path.replace(/\/$/, "") === to.path.replace(/\/$/, "")
+              );
+
+              const nextPathname = isToAppRoute
+                ? dedupeSlash([basename, to.path].join("/"))
+                : to.path;
+
+              onRemoteNavigate?.({
+                pathname: nextPathname,
+                hash: to.hash,
+                // TODO search: to.query,
+              });
+            }
+          })
+        );
+      }
+
       return {
         unmount: mountApp({
           ...rest,
@@ -89,29 +114,7 @@ export const createApp = (
           appName,
           isSelfHosted,
           onError,
-          cleanups: onRemoteNavigate
-            ? [
-                router.beforeEach((to, from) => {
-                  if (from !== START_LOCATION) {
-                    // check if the next path (to.path) is inside the mfe (in its routes)
-                    const isToAppRoute = routes.find(
-                      ({ path }) =>
-                        path.replace(/\/$/, "") === to.path.replace(/\/$/, "")
-                    );
-
-                    const nextPathname = isToAppRoute
-                      ? dedupeSlash([basename, to.path].join("/"))
-                      : to.path;
-
-                    onRemoteNavigate?.({
-                      pathname: nextPathname,
-                      hash: to.hash,
-                      // TODO search: to.query,
-                    });
-                  }
-                }),
-              ]
-            : [],
+          cleanups,
           render: ({ appProps, rendered }) => {
             try {
               app = createVueApp(App, { ...appProps, isSelfHosted })
